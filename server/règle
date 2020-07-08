@@ -1,0 +1,35 @@
+
+regle de deck :
+monaie
+(recherche par race)
+Creer une carte contre des points
+prendre une carte contre des points
+creer un deck de 50 carte
+
+-------------------------------------
+
+regle de combat :
+a chaque début de manche donné 10 carte aléatoire du deck
+
+
+avoir un nombre de point plus elever que le joueur en face pour gagner la manche
+2 manche réussi pour gagner
+
+--------------------------------------
+creation de carte : 
+
+point (1 a 10)
+race (elfe/monstre/humain/mage/nain)
+cout monaie
+
+skill :
+retirer (nbr) point (ligne de melee/ligne distance/race) enemi
+donner (nbr) point (ligne de melee/ligne distance/race) allié
+detruire un accessoire énemi
+ajoute 1 point sur cet carte par même race mise en jeu allié
+confere invulnérabitilité (ligne de melee/ligne distance/race) allié pendant un tour
+détruis carte énemi en jeu du même type
+echanger ligne dist/melee d'une carte enemi au hasard
+invulnérable
+
+
