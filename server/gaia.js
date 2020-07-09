@@ -1,6 +1,7 @@
 var jwt = require('jsonwebtoken');
 var timeExpiration = 60000*60
 var fs = require('fs');
+var slugify = require('slugify')
 const User = require('./user');
 const FirstDeck = require('./firstDeck');
 
@@ -22,6 +23,7 @@ class Gaia {
         this.listCard = {};//this.firstDeck.firstCreateCard();
         this.listMatchmaking = {};
         this.listParty = {};
+        //this.saveGame();
         
     }
 
@@ -29,8 +31,6 @@ class Gaia {
     saveGame(){
       var listUser = {};
       for (const [key, value] of Object.entries(this.listUser)) {
-        //console.log(`${key}: ${value}`);
-        //console.log(value);
         var save = this.clearOneUserForEmit(value);
         listUser[key] = Object.assign({},value)
         this.reloadOneUserData(value,save);
@@ -44,7 +44,6 @@ class Gaia {
       } catch (err) {
           console.error(err);
       }
-
       try {
         let data = JSON.stringify(this.listCard);
         fs.writeFile('listCard.json', data, (err) => {
@@ -70,12 +69,13 @@ class Gaia {
     }
 
     createCard(card){
+      var slugyName = slugify(card.name);
       var card = {
-        name:card.name,
+        name:slugyName,
         point:card.point,
         cost:card.cost,
         race:card.race,
-        img:card.img,
+        img:this.imageCardUpdate(card,slugyName),
         skill:{
           type:card.skill.type,
           nbr:card.skill.nbr,
@@ -83,7 +83,23 @@ class Gaia {
           ligne:card.skill.ligne,
         }
       }
+      
       return card;
+    }
+
+    imageCardUpdate(card,slugyName){
+      var fileName = __dirname + '/tmp/uploads/'+ slugyName +'.jpg';
+      fs.open(fileName, 'a', 0755, function(err, fd) {
+          if (err) throw err;
+          fs.writeFile(fileName, card.file, 'base64', function(err) {
+            console.log(err);
+          });
+          fs.write(fd, card.file, null, 'Binary', function(err, written, buff) {
+              fs.close(fd, function() {
+                  console.log('File saved successful!');
+              });
+          })
+      });
     }
 
     totalPointUser(user){
@@ -94,23 +110,27 @@ class Gaia {
       return point;
     }
 
-    partyDisconnect(user){//console.log(user)
+    partyDisconnect(user){
       if(user){
         if(user.party){
-          if(user.party.user[0] ){
-            var user0 = user.party.user[0];
-            if(user.party.user[0].name != user.name){
-              user0.socket.emit('disconnectParty', { party: {} });
-              delete user0.party;
+          if(user.party.user){
+            if(user.party.user[0] ){
+              if(user.party.user[0].name != user.name){
+                user.party.user[0].socket.emit('disconnectParty', { party: {} });
+                user.party.user[1].socket.emit('disconnectParty', { party: {} });
+                delete user.party.user[0].party;
+              }
             }
           }
         }
         if(user.party){
-          if(user.party.user[1]){
-            var user1 = user.party.user[1];
-            if(user.party.user[1].name != user.name){
-              user1.socket.emit('disconnectParty', { party: {} });
-              delete user1.party;
+          if(user.party.user){
+            if(user.party.user[1]){
+              if(user.party.user[1].name != user.name){
+                user.party.user[1].socket.emit('disconnectParty', { party: {} });
+                user.party.user[0].socket.emit('disconnectParty', { party: {} });
+                delete user.party.user[1].party;
+              }
             }
           }
         }
@@ -122,11 +142,11 @@ class Gaia {
         if(this.listUser[data.username].party){
           //drop card
           var party = this.listUser[data.username].party;
-          if(party.user[0].name === data.username && party.turn === 0 && parseInt(data.pos) <= 9){
+          if(party.user[0].name === data.username && party.turn === 0 && parseInt(data.pos) <= 9 && !party.table[data.pos]){
             party.table[data.pos] = data.card.obj;
             party.turn = 1;
             delete party.user[0].main[data.card.id];
-          }else if(party.user[1].name === data.username && party.turn === 1 && parseInt(data.pos) >= 10){
+          }else if(party.user[1].name === data.username && party.turn === 1 && parseInt(data.pos) >= 10 && !party.table[data.pos]){
             party.table[data.pos] = data.card.obj;
             party.turn = 0;
             delete party.user[1].main[data.card.id];
@@ -256,15 +276,19 @@ class Gaia {
             this.listMatchmaking[data.user.username].me.party = party;
             this.listUser[Object.keys(this.listMatchmaking)[index]].party = party;
             
+            this.setMain(party.user[0]);
+            this.setMain(party.user[1]);
+
             var save = this.clearTwoUserForEmit(party.user[0],party.user[1]);
 
             save.socket0.emit('party', { party: party });
             save.socket1.emit('party', { party: party });
 
             this.reloadTwoUserData(party.user[0],party.user[1],save);
+            
+            delete this.listMatchmaking[party.user[0].name];
+            delete this.listMatchmaking[party.user[1].name];
 
-            delete this.listMatchmaking[data.user.username];
-            delete this.listMatchmaking[this.listUser[Object.keys(this.listMatchmaking)[index]]];
             return party.table;
           }
         }
@@ -315,10 +339,11 @@ class Gaia {
     connectUser(socket,data){
       if(this.listUser[data.user.username]){
         this.listUser[data.user.username].socket = socket;
-        var user = {
-          cards : this.listUser[data.user.username].cards,
-          username : data.user.username,
-        }
+
+        var save = this.clearOneUserForEmit(this.listUser[data.user.username]);
+        var user = Object.assign({},this.listUser[data.user.username])
+        this.reloadOneUserData(this.listUser[data.user.username],save);
+
         socket.emit('createOk', { user: user });
         //jwt.sign({ user: req.body.user.username ,iat:Date.now() }, this.signed)
         return this.listUser[data.user.username];
@@ -333,12 +358,12 @@ class Gaia {
         this.listUser[data.user.username].socket = socket;
         this.listUser[data.user.username].monaie = 0;
         this.setMain(data.user);
-        var user = {
-          cards : this.listUser[data.user.username].cards,
-          username : data.user.username,
-        }
+        
+        var save = this.clearOneUserForEmit(this.listUser[data.user.username]);
+        var user = Object.assign({},this.listUser[data.user.username])
+        this.reloadOneUserData(this.listUser[data.user.username],save);
+
         socket.emit('createOk', { user: user });
-        this.searchMatchmaking(socket,data);
         //jwt.sign({ user: req.body.user.username ,iat:Date.now() }, this.signed)
         return this.listUser[data.user.username];
       }

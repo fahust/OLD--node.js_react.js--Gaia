@@ -80,6 +80,8 @@ export default class Table extends React.Component {
     return (
     <div>
       {renderTable}
+      <div>Abandonner</div>
+      <div>Passer son tour</div>
     </div>
     )
   }
