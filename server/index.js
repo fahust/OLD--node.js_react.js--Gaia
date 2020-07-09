@@ -17,23 +17,33 @@ io.on('connection', socket => {
   allClients.push(socket);
 
   socket.on('disconnect', function() {
-    console.log('Got disconnect!');
-
     var i = allClients.indexOf(socket);
     gaia.partyDisconnect(socket.userData);
     delete socket.userData;
     allClients.splice(i, 1);
   });
 
+  socket.on('disconnectParty', function() {
+    gaia.partyDisconnect(socket.userData);
+  });
+
+  socket.on('imageUpload', function(data) {
+    gaia.createCard(data);
+  })
+
   socket.on('dropCard', (data) => {
     gaia.dropCardParty(data);
+  })
+
+  socket.on('matchmaking', (data) => {
+    gaia.searchMatchmaking(socket,data);
   })
 
   socket.on('create', (data) => {
     socket.userData = gaia.createUser(socket,data);
   });
 
-  socket.on('connect', (data) => {
+  socket.on('connected', (data) => {
     socket.userData = gaia.connectUser(socket,data);
   });
 
@@ -44,7 +54,7 @@ io.listen(12000);
 gaia.loadGame();
 setInterval(() => {
   gaia.saveGame();
-}, 60000*2);
+}, 60000*50);
 
 
 console.log('gaia Server Running')

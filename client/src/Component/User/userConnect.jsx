@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default class UserCreate extends React.Component {
+export default class UserConnect extends React.Component {
   constructor(props){
     super(props);
     this.state = {
@@ -27,8 +27,7 @@ export default class UserCreate extends React.Component {
         var connect = {
           user:{username:this.state.username}
         }
-        this.props.socket.emit('connect', connect);
-  
+        this.props.socket.emit('connected', connect);
       }
     };
   
