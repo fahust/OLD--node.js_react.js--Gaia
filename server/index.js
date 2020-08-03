@@ -7,7 +7,7 @@ function randomIntFromInterval(min, max) { // min and max included
   }
 
 
-const signed = randomIntFromInterval(0,9999999)
+const signed = randomIntFromInterval(0,999999999999999)
 
 
 gaia = new Gaia(signed);
@@ -28,7 +28,8 @@ io.on('connection', socket => {
   });
 
   socket.on('imageUpload', function(data) {
-    gaia.createCard(data);
+    io.sockets.emit('newCard',{ data: gaia.createCard(data)});
+    socket.emit('actualizUser',{data: gaia.getUser(data.username)})
   })
 
   socket.on('dropCard', (data) => {
@@ -37,6 +38,22 @@ io.on('connection', socket => {
 
   socket.on('matchmaking', (data) => {
     gaia.searchMatchmaking(socket,data);
+  })
+
+  socket.on('buyCard', (data) => {
+    gaia.buyCard(socket,data);
+  })
+
+
+  socket.on('getListCard', (data) => {
+    gaia.getListCard(socket,data);
+  })
+
+  socket.on('deleteCard', (data) => {
+    gaia.deleteCard(socket,data);
+  })
+  socket.on('getMyListCard', (data) => {
+    gaia.getMyListCard(socket,data);
   })
 
   socket.on('create', (data) => {
@@ -54,7 +71,7 @@ io.listen(12000);
 gaia.loadGame();
 setInterval(() => {
   gaia.saveGame();
-}, 60000*50);
+}, 60000*10);
 
 
 console.log('gaia Server Running')
